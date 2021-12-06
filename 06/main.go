@@ -19,6 +19,27 @@ func read_lines () ([]int) {
 	return school
 }
 
+func count_fish_optimized (school []int, days int) (int) {
+	total := len(school)
+	// init optimized struct
+	fish := []int{0, 0, 0, 0, 0, 0, 0, 0, 0}
+	for _, f := range school {
+		fish[f]++
+	}
+
+	for i := 0; i < days; i++ {
+		newborns := fish[0]
+		for j := 0; j < len(fish)-1; j++ {
+			fish[j] = fish[j+1]
+		}
+		fish[8] = newborns
+		fish[6] += newborns
+		// Add newborns to fish total
+		total += newborns
+	}
+	return total
+}
+
 func count_fish (school []int, days int) ([]int, int) {
 	// Newborns for each iteration
 	var newborns []int
@@ -44,7 +65,9 @@ func count_fish (school []int, days int) ([]int, int) {
 func main () {
 	school := read_lines ()
 
-	school, count := count_fish(school, 80)
+	// school, count := count_fish(school, 80)
+
+	count := count_fish_optimized(school, 256)
 
 	fmt.Println(count)
 }
