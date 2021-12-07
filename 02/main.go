@@ -15,7 +15,7 @@ func main () {
 	}
 	defer file.Close()
 
-	var pos = [2]int{0, 0}
+	var pos = [3]int{0, 0, 0}
 
 	scanner := bufio.NewScanner(file)
 
@@ -35,10 +35,11 @@ func main () {
 		switch command {
 			case "forward ":
 				pos[0] += count
+				pos[1] += pos[2]*count
 			case "up ":
-				pos[1] -= count
+				pos[2] -= count
 			case "down ":
-				pos[1] += count
+				pos[2] += count
 		}
 	}
 
