@@ -5,31 +5,31 @@ import (
 )
 
 func read_lines () ([][]int) {
-	heightmap := [][]int{}
+	grid := [][]int{}
 	var line string
 
 	for n := 1; n > 0; {
 		n, _ = fmt.Scanf("%s\n", &line);
 		if n > 0 {
 			l := make([]int, len(line))
-			heightmap = append(heightmap, l)
+			grid = append(grid, l)
 
 			for i := 0; i < len(line); i++ {
 				l[i] = int(line[i] - 48)
 			}
 		}
 	}
-	return heightmap
+	return grid
 }
 
-func is_low_point(heightmap [][]int, i int, j int) (bool) {
+func is_low_point(grid [][]int, i int, j int) (bool) {
 	low_point := true
 
 	points := [4][2]int{{i,j-1}, {i-1,j}, {i+1,j}, {i,j+1}}
 
 	for _, point := range points {
-		if point[0] >= 0 && point[0] <= (len(heightmap)-1) && point[1] >= 0 && point[1] <= (len(heightmap[0])-1) {
-			if heightmap[i][j] >= heightmap[point[0]][point[1]] {
+		if point[0] >= 0 && point[0] <= (len(grid)-1) && point[1] >= 0 && point[1] <= (len(grid[0])-1) {
+			if grid[i][j] >= grid[point[0]][point[1]] {
 				low_point = false
 			}
 		}
@@ -38,12 +38,12 @@ func is_low_point(heightmap [][]int, i int, j int) (bool) {
 	return low_point
 }
 
-func find_low_points(heightmap [][]int) ([][]int) {
+func find_low_points(grid [][]int) ([][]int) {
 	points := [][]int{}
 
-	for i, row := range heightmap {
+	for i, row := range grid {
 		for j := 0; j < len(row); j++ {
-			if is_low_point(heightmap, i, j) {
+			if is_low_point(grid, i, j) {
 				point := make([]int, 2)
 				point[0] = i
 				point[1] = j
@@ -54,66 +54,84 @@ func find_low_points(heightmap [][]int) ([][]int) {
 	return points
 }
 
-func calc_risk(heightmap [][]int, points [][]int) (int) {
+func calc_risk(grid [][]int, points [][]int) (int) {
 	risk := 0
 	for _, point := range points {
-		risk += heightmap[point[0]][point[1]]+1
+		risk += grid[point[0]][point[1]]+1
 	}
 	return risk
 }
 
-func calc_basins(heightmap [][]int, points [][]int) ([][]int) {
-	basin_size := [][]int{}
+func insert_sorted (nums []int, n int) ([]int) {
+	i := 0
 
-	for i := 0; i < len(points); i++ {
-		s := check_basin(heightmap, points[i][0], points[i][1], -1, -1)
-		fmt.Println(s)
-	}
-	return basin_size
+	for ; i < len(nums) && nums[i] > n; i++ { }
+
+	return append(nums[:i], append([]int{n}, nums[i:]...)...)
 }
 
-func check_basin(heightmap [][]int, i int, j int, origi int, origj int) (int) {
-	count := 0
-	basin := true
-	
-	if i < 0 || i >= len(heightmap) || j < 0 || j >= len(heightmap[0]) {
-		return count
+func calc_basins(grid [][]int, points [][]int) (int) {
+	basins := []int{}
+
+	for i := 0; i < len(points); i++ {
+		s := bfs(grid, points[i][0], points[i][1])
+		basins = insert_sorted(basins, s)
 	}
 
-	fmt.Println("potential", i,j)
-	points := [4][2]int{{i,j-1}, {i-1,j}, {i+1,j}, {i,j+1}}
+	fmt.Println(basins)
+	return basins[0] * basins[1] * basins[2]
+}
 
-	for _, point := range points {
-		if basin && point[0] >= 0 && point[0] < len(heightmap) && point[1] >= 0 && point[1] < len(heightmap[0]) {
-			if point[0] == origi && point[1] == origj {
-				continue
-			}
-			if heightmap[i][j] >= heightmap[point[0]][point[1]] {
-				basin = false
-				return 0
+func contains(s [][]int, e [] int) bool {
+    for _, a := range s {
+        if a[0] == e[0] && a[1] == e[1] {
+            return true
+        }
+    }
+    return false
+}
+
+func bfs(grid [][]int, i int, j int) int {
+	// Queue of points to visit
+	queue := [][]int{}
+	queue = append(queue, []int{i,j})
+
+	// Set of visited points
+	reached := [][]int{}
+	reached = append(reached, []int{i,j})
+
+	for len(queue) > 0 {
+		// Pop next element from queue
+		cur := []int{}
+		cur, queue = queue[0], queue[1:]
+		x := cur[0]
+		y := cur[1]
+
+		// Calc neighbours
+		neighbors := [][]int{{x,y-1}, {x-1,y}, {x+1,y}, {x,y+1}}
+		for _, p := range neighbors {
+
+			// If it's a valid neighbor, visit it
+			if p[0] >= 0 && p[0] < len(grid) && p[1] >= 0 && p[1] < len(grid[0]) {
+
+				// Check if it was already visited and is part of the basin (< 9)
+				if ! contains(reached, p) && grid[p[0]][p[1]] < 9 {
+					reached = append(reached, p)
+					queue = append(queue, p)
+				}
 			}
 		}
 	}
-	if basin {
-		fmt.Println("basin", i,j)
-		for _, point := range points {
-			if point[0] == origi && point[1] == origj {
-				continue
-			} else {
-				count += check_basin(heightmap, point[0], point[1], i, j)
-			}
-		}
-	}
-	return count+1
+	return len(reached)
 }
 
 func main () {
-	heightmap := read_lines ()
-	points := find_low_points(heightmap)
+	grid := read_lines ()
+	points := find_low_points(grid)
 
-	fmt.Println(points)
-	basin_size := calc_basins(heightmap, points)
+	basin_size := calc_basins(grid, points)
 	fmt.Println(basin_size)
-	// risk := calc_risk(heightmap, points)
+
+	// risk := calc_risk(grid, points)
 
 }
