@@ -45,12 +45,14 @@ func count_fuel (positions []int, max int) (int) {
 	for i := 0; i < len(positions); i++ {
 		f := 0
 		for j := 0; j < len(positions); j++ {
-			f += positions[j]*sum_range(int(math.Abs(float64(j-i))))
+			n := int(math.Abs(float64(j-i)))
+			sum := (n * (n+1)) / 2
+			f += positions[j]*sum
+			// f += positions[j]*sum_range(int(math.Abs(float64(j-i))))
 		}
 		if f < fuel {
 			fuel = f
 		}
-		fmt.Println(fuel)
 	}
 
 	return fuel
