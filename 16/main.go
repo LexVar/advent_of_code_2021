@@ -53,23 +53,68 @@ func bits_to_decimal(bits []byte) int {
 
 // Parse literal number packet, after version and type
 func parse_literal_number(bits []byte) ([]byte, int, int) {
-	number := 0
+	var bit_number []byte
 	parsed := 0
 
 	field, bits := bits[0:5], bits[5:]
+	bit_number = append(bit_number, field[1:]...)
 	parsed += 5
+
 	for field[0] != 0 {
 		field, bits = bits[0:5], bits[5:]
 		parsed += 5
-
-		// Calc number here
+		bit_number = append(bit_number, field[1:]...)
 	}
-
-	return bits, parsed, number
+	return bits, parsed, bits_to_decimal(bit_number)
 }
 
-func parse_operator(bits[]byte) ([]byte, int) {
-	var size, n, parsed, npackets int
+func calc_operation(id int, args []int) (int) {
+	res := 0
+
+	switch id {
+	case 0:
+		for _, n := range args { res += n }
+	case 1:
+		res = args[0]
+		for i := 1; i < len(args); i++ { res = res * args[i] }
+	case 2:
+		res = math.MaxInt32
+		for _, n := range args {
+			if n < res {
+				res = n
+			}
+		}
+	case 3:
+		for _, n := range args {
+			if n > res {
+				res = n
+			}
+		}
+	case 5:
+		if args[0] > args[1] {
+			res = 1
+		} else {
+			res = 0
+		}
+	case 6:
+		if args[0] < args[1] {
+			res = 1
+		} else {
+			res = 0
+		}
+	case 7:
+		if args[1] == args[0] {
+			res = 1
+		} else {
+			res = 0
+		}
+	}
+	return res
+}
+
+func parse_operator(bits[]byte) ([]byte, int, []int) {
+	var size, n, parsed, npackets, res int
+	var args []int
 
 	// length ID
 	bits, id := parse_parameter(bits, 1)
@@ -81,12 +126,14 @@ func parse_operator(bits[]byte) ([]byte, int) {
 		parsed += 12
 
 		// Parse 1st subpacket
-		bits, n = start_parser(bits)
+		bits, n, res = start_parser(bits)
 		parsed += n
+		args = append(args, res)
 
 		// while number of subpackets are not parsed
 		for npackets = 1; npackets < size; npackets++ {
-			bits, n = start_parser(bits)
+			bits, n, res = start_parser(bits)
+			args = append(args, res)
 			parsed += n
 		}
 
@@ -96,15 +143,19 @@ func parse_operator(bits[]byte) ([]byte, int) {
 		bits, size = parse_parameter(bits, 15)
 		parsed += 16
 
-		bits, n = start_parser(bits)
+		bits, n, res = start_parser(bits)
+		args = append(args, res)
 
+		packetlen := n
 		// while length of subpackets are not parsed
-		for parsed += n; parsed < size; parsed += n {
-			bits, n = start_parser(bits)
+		for parsed += n; packetlen < size; parsed += n {
+			bits, n, res = start_parser(bits)
+			packetlen += n
+			args = append(args, res)
 		}
 	}
 
-	return bits, parsed
+	return bits, parsed, args
 }
 
 // Parse and return parameter
@@ -113,8 +164,9 @@ func parse_parameter(bits []byte, n int) ([]byte, int) {
 }
 
 // start a packet parsing with version + id
-func start_parser(bits []byte) ([]byte, int) {
-	var version, id, parsed, n int
+func start_parser(bits []byte) ([]byte, int, int) {
+	var version, id, parsed, n, res int
+	var args []int
 
 	// parse version
 	bits, version = parse_parameter(bits, 3)
@@ -124,31 +176,29 @@ func start_parser(bits []byte) ([]byte, int) {
 	bits, id = parse_parameter(bits, 3)
 	parsed += 6
 
-	if len(bits) <= 0 {
-	} else if id == 4 {
-		bits, n, _ = parse_literal_number(bits)
+	if id == 4 {
+		// Parse a literal number packet
+		bits, n, res = parse_literal_number(bits)
 		parsed += n
 	} else {
-		bits, n = parse_operator(bits)
+		// Parse an operator packet
+		bits, n, args = parse_operator(bits)
 		parsed += n
+
+		// Compute operation with arguments
+		res = calc_operation(id, args)
 	}
 
-	return bits, parsed
-}
-
-func part1(bits []byte) {
-
-	for len(bits) > 7 {
-		bits, _ = start_parser(bits)
-	}
-
-	return
+	return bits, parsed, res
 }
 
 func main () {
 	bits := read_lines()
 	sum = 0
+	res := 0
 
-	part1(bits)
-	fmt.Println(sum)
+	_, _, res = start_parser(bits)
+
+	fmt.Println(res)
+	// fmt.Println(sum)
 }
